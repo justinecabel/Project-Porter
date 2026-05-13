@@ -42,6 +42,9 @@ def default_app_value(index, key):
 
 
 def main():
+    if APPS_PATH.is_dir():
+        fail(f"{APPS_PATH} is a directory; remove it and rerun this command")
+
     if APPS_PATH.exists():
         print(f"using existing {APPS_PATH}")
         return
