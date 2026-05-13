@@ -58,6 +58,12 @@ local app names, routes, hostnames, and ports are not shared on GitHub.
 If you want to regenerate it from Compose environment defaults, delete
 `config/apps.json` and restart the container.
 
+You can also create it from the host before starting Docker:
+
+```bash
+APPS_PATH=config/apps.json python3 scripts/init-apps-json.py
+```
+
 Routes are unique path prefixes. A route such as `/api/` proxies to the root of
 the upstream app at `http://host.docker.internal:3000/`.
 
