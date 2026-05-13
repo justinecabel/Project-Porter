@@ -1,0 +1,16 @@
+{
+  "apps": [
+    {
+      "name": "example-api",
+      "route": "/api/",
+      "host": "host.docker.internal",
+      "port": 3000
+    },
+    {
+      "name": "example-dashboard",
+      "route": "/dashboard/",
+      "host": "host.docker.internal",
+      "port": 5173
+    }
+  ]
+}
