@@ -15,23 +15,8 @@ NGINX listens on host port `80`; Funnel can then publish that local service.
 
 ## Configure Apps
 
-On first run, the container creates `config/apps.json` from the app variables in
-`docker-compose.yml`:
-
-```yaml
-environment:
-  APP_COUNT: ${APP_COUNT:-2}
-  APP_1_NAME: ${APP_1_NAME:-app-3001}
-  APP_1_ROUTE: ${APP_1_ROUTE:-/app1/}
-  APP_1_HOST: ${APP_1_HOST:-host.docker.internal}
-  APP_1_PORT: ${APP_1_PORT:-3001}
-  APP_2_NAME: ${APP_2_NAME:-vite-app}
-  APP_2_ROUTE: ${APP_2_ROUTE:-/app2/}
-  APP_2_HOST: ${APP_2_HOST:-host.docker.internal}
-  APP_2_PORT: ${APP_2_PORT:-5173}
-```
-
-That produces:
+On first run, the container creates `config/apps.json` from the defaults in
+`scripts/init-apps-json.py`. That produces:
 
 ```json
 {
@@ -44,9 +29,10 @@ That produces:
     },
     {
       "name": "vite-app",
-      "route": "/app2/",
+      "route": "/",
       "host": "host.docker.internal",
-      "port": 5173
+      "port": 5173,
+      "proxy_host_header": "localhost:5173"
     }
   ]
 }
@@ -55,7 +41,7 @@ That produces:
 After the first run, edit `config/apps.json` directly. It is ignored by Git so
 local app names, routes, hostnames, and ports are not shared on GitHub.
 
-If you want to regenerate it from Compose environment defaults, delete
+If you want to regenerate it from the built-in defaults, delete
 `config/apps.json` and restart the container.
 
 You can also create it from the host before starting Docker:
@@ -66,6 +52,35 @@ APPS_PATH=config/apps.json python3 scripts/init-apps-json.py
 
 Routes are unique path prefixes. A route such as `/api/` proxies to the root of
 the upstream app at `http://host.docker.internal:3000/`.
+
+For Vite or other frontend dev servers, configure the app with a matching base
+path, such as `base: "/pm-ui/"`, and set `strip_prefix` to `false` so the app
+receives the same path it was built for.
+
+Some dev servers also restrict allowed hostnames. For apps running on your host,
+set `host` to `host.docker.internal` so Docker can connect, and set
+`proxy_host_header` to `localhost:<port>` so the dev server accepts the request.
+
+If an app is not base-path aware and still emits root-relative assets like
+`/src/main.js`, `extra_routes` can be used as a temporary development workaround:
+
+```json
+{
+  "name": "pm-ui",
+  "route": "/pm-ui/",
+  "host": "host.docker.internal",
+  "port": 5173,
+  "proxy_host_header": "localhost:5173",
+  "strip_prefix": false,
+  "extra_routes": [
+    "/stats",
+    "/@vite/",
+    "/src/",
+    "/node_modules/",
+    "/map-cache-sw.js"
+  ]
+}
+```
 
 Use `host.docker.internal` for apps running on the host machine. Use a Docker
 Compose service name for apps running on the same Compose network.
@@ -112,7 +127,7 @@ validates it with `nginx -t`, and reloads NGINX automatically.
 Run Funnel on the host machine:
 
 ```bash
-sudo tailscale funnel 80
+tailscale funnel --bg --https=443 http://127.0.0.1:80
 ```
 
 Tailscale remains outside Docker; the container only serves HTTP on local port

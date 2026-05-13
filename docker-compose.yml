@@ -11,15 +11,6 @@ services:
       - "host.docker.internal:host-gateway"
     environment:
       APPS_PATH: /etc/nginx/config/apps.json
-      APP_COUNT: ${APP_COUNT:-2}
-      APP_1_NAME: ${APP_1_NAME:-app-3001}
-      APP_1_ROUTE: ${APP_1_ROUTE:-/app1/}
-      APP_1_HOST: ${APP_1_HOST:-host.docker.internal}
-      APP_1_PORT: ${APP_1_PORT:-3001}
-      APP_2_NAME: ${APP_2_NAME:-vite-app}
-      APP_2_ROUTE: ${APP_2_ROUTE:-/app2/}
-      APP_2_HOST: ${APP_2_HOST:-host.docker.internal}
-      APP_2_PORT: ${APP_2_PORT:-5173}
     volumes:
       - ./config:/etc/nginx/config
       - ./nginx/templates:/etc/nginx/templates:ro

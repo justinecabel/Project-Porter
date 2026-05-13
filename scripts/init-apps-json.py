@@ -15,7 +15,7 @@ DEFAULT_APPS = [
     },
     {
         "name": "vite-app",
-        "route": "/app2/",
+        "route": "/",
         "host": "host.docker.internal",
         "port": 5173,
     },

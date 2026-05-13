@@ -34,14 +34,14 @@ def load_apps():
     return apps
 
 
-def normalize_route(route):
+def normalize_route(route, force_trailing_slash=True):
     if not isinstance(route, str) or not route.startswith("/"):
         fail("each app route must be a string starting with /")
 
     if "?" in route or "#" in route:
         fail(f"route {route!r} must not contain query strings or fragments")
 
-    if route != "/" and not route.endswith("/"):
+    if force_trailing_slash and route != "/" and not route.endswith("/"):
         route += "/"
 
     return route
@@ -55,6 +55,8 @@ def validate_app(app):
     route = normalize_route(app.get("route"))
     host = app.get("host")
     port = app.get("port")
+    extra_routes = app.get("extra_routes", [])
+    strip_prefix = app.get("strip_prefix", True)
 
     if not isinstance(name, str) or not NAME_RE.match(name):
         fail("each app name must contain only letters, numbers, dots, underscores, or dashes")
@@ -70,34 +72,45 @@ def validate_app(app):
     if port < 1 or port > 65535:
         fail(f"app {name!r} has an invalid port")
 
+    if not isinstance(extra_routes, list):
+        fail(f"app {name!r} extra_routes must be a list")
+
+    extra_routes = [normalize_route(route, force_trailing_slash=False) for route in extra_routes]
+
     return {
         "name": name,
         "route": route,
         "host": host,
         "port": port,
+        "proxy_host_header": app.get("proxy_host_header") or f"{host}:{port}",
+        "extra_routes": extra_routes,
+        "strip_prefix": bool(strip_prefix),
     }
 
 
-def render_location(app):
-    route = app["route"]
+def render_location(app, route=None, strip_prefix=True):
+    route = route or app["route"]
     upstream = f"http://{app['host']}:{app['port']}"
+    proxy_host_header = app["proxy_host_header"]
+    forwarded_prefix = "" if app["route"] == "/" else app["route"].rstrip("/")
 
-    if route == "/":
+    if route == "/" or not strip_prefix:
         proxy_pass = f"{upstream};"
     else:
         proxy_pass = f"{upstream}/;"
 
-    return f"""    # {app['name']}
+    return f"""    # {app['name']} -> {route}
     location {route} {{
         proxy_pass {proxy_pass}
         proxy_http_version 1.1;
 
-        proxy_set_header Host $host;
+        proxy_set_header Host {proxy_host_header};
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Host $host;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header X-Forwarded-Port $server_port;
+        proxy_set_header X-Forwarded-Prefix {forwarded_prefix};
 
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $connection_upgrade;
@@ -110,11 +123,28 @@ def render_location(app):
 def main():
     apps = [validate_app(app) for app in load_apps()]
 
-    routes = [app["route"] for app in apps]
+    routes = []
+    for app in apps:
+        routes.append(app["route"])
+        routes.extend(app["extra_routes"])
+
     if len(routes) != len(set(routes)):
         fail("routes must be unique")
 
-    locations = "\n\n".join(render_location(app) for app in apps)
+    location_blocks = []
+    for app in apps:
+        if app["route"] != "/":
+            route_without_slash = app["route"].rstrip("/")
+            location_blocks.append(f"""    # {app['name']} -> {route_without_slash}
+    location = {route_without_slash} {{
+        return 301 {app['route']};
+    }}""")
+
+        location_blocks.append(render_location(app, strip_prefix=app["strip_prefix"]))
+        for route in app["extra_routes"]:
+            location_blocks.append(render_location(app, route=route, strip_prefix=False))
+
+    locations = "\n\n".join(location_blocks)
 
     template = TEMPLATE_PATH.read_text()
     config = """map $http_upgrade $connection_upgrade {
