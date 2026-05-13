@@ -1,9 +1,10 @@
 #!/bin/sh
 set -eu
 
-APPS_PATH=/etc/nginx/apps.json
+APPS_PATH="${APPS_PATH:-/etc/nginx/config/apps.json}"
 TEMPLATE_PATH=/etc/nginx/templates/nginx.conf.template
 CHECK_INTERVAL="${CHECK_INTERVAL:-2}"
+export APPS_PATH
 
 checksum() {
   sha256sum "$APPS_PATH" "$TEMPLATE_PATH" 2>/dev/null | sha256sum | awk '{print $1}'
@@ -31,6 +32,7 @@ reload_if_changed() {
   done
 }
 
+init-apps-json
 generate-nginx-config
 nginx -t
 

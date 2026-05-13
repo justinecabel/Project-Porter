@@ -1,13 +1,13 @@
 {
   "apps": [
     {
-      "name": "example-api",
+      "name": "api",
       "route": "/api/",
       "host": "host.docker.internal",
       "port": 3000
     },
     {
-      "name": "example-dashboard",
+      "name": "dashboard",
       "route": "/dashboard/",
       "host": "host.docker.internal",
       "port": 5173

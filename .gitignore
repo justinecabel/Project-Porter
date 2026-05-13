@@ -1,0 +1,9 @@
+# Local app routes, upstream hostnames, and ports.
+apps.json
+config/apps.json
+
+# Optional local env overrides.
+.env
+
+# macOS metadata.
+.DS_Store

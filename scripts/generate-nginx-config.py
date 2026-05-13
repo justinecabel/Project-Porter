@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 
-APPS_PATH = Path(os.environ.get("APPS_PATH", "/etc/nginx/apps.json"))
+APPS_PATH = Path(os.environ.get("APPS_PATH", "/etc/nginx/config/apps.json"))
 TEMPLATE_PATH = Path(os.environ.get("TEMPLATE_PATH", "/etc/nginx/templates/nginx.conf.template"))
 OUTPUT_PATH = Path(os.environ.get("OUTPUT_PATH", "/etc/nginx/conf.d/default.conf"))
 
@@ -23,7 +23,7 @@ def load_apps():
     try:
         raw = json.loads(APPS_PATH.read_text())
     except FileNotFoundError:
-        fail(f"missing {APPS_PATH}")
+        fail(f"missing {APPS_PATH}; it should be generated on first startup")
     except json.JSONDecodeError as exc:
         fail(f"invalid JSON in {APPS_PATH}: {exc}")
 
@@ -62,7 +62,12 @@ def validate_app(app):
     if not isinstance(host, str) or not HOST_RE.match(host):
         fail(f"app {name!r} has an invalid host")
 
-    if not isinstance(port, int) or port < 1 or port > 65535:
+    try:
+        port = int(port)
+    except (TypeError, ValueError):
+        fail(f"app {name!r} has an invalid port")
+
+    if port < 1 or port > 65535:
         fail(f"app {name!r} has an invalid port")
 
     return {
