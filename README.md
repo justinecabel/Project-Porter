@@ -70,6 +70,34 @@ the upstream app at `http://host.docker.internal:3000/`.
 Use `host.docker.internal` for apps running on the host machine. Use a Docker
 Compose service name for apps running on the same Compose network.
 
+## Windows Notes
+
+`host.docker.internal` is the right hostname for apps running on your Windows
+host through Docker Desktop. Inside the NGINX container, `localhost` means the
+container itself, so Windows host apps should use:
+
+```json
+{
+  "host": "host.docker.internal",
+  "port": 5173
+}
+```
+
+If `config/apps.json` was accidentally created as a folder, remove it and
+regenerate it from PowerShell:
+
+```powershell
+docker compose down
+Remove-Item -Recurse -Force .\config\apps.json
+$env:APPS_PATH = "config/apps.json"
+python scripts/init-apps-json.py
+docker compose build --no-cache
+docker compose up -d
+```
+
+The repository includes `.gitattributes` so shell scripts keep Linux `LF` line
+endings when checked out on Windows.
+
 ## Run
 
 ```bash
