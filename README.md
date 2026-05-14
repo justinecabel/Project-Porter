@@ -1,14 +1,16 @@
 # Tailscale Funnel NGINX Reverse Proxy
 
 This project runs NGINX in Docker Compose and keeps Tailscale Funnel on the host.
-NGINX listens on host port `80`; Funnel can then publish that local service.
+NGINX listens on host port `81` by default; Funnel can then publish that local service.
 
 ## Files
 
-- `docker-compose.yml` runs the reverse proxy container on port `80`.
+- `docker-compose.yml` runs the reverse proxy container on host port `81` by default.
 - `config/apps.json` defines your local proxied apps by `name`, `route`, `host`, and `port`.
 - `apps.example.json` is a safe example file to commit and copy from.
 - `nginx/templates/nginx.conf.template` provides the server template.
+- `scripts/init-local-env.py` creates a local `.env` with `NGINX_PORT=81` if it does not already exist.
+- `scripts/init-local-env.ps1` does the same for Windows PowerShell without requiring Python.
 - `scripts/init-apps-json.py` creates `config/apps.json` on first run from Compose environment variables.
 - `scripts/generate-nginx-config.py` renders NGINX config from `config/apps.json`.
 - `scripts/start.sh` starts NGINX and reloads it when config inputs change.
@@ -116,6 +118,14 @@ endings when checked out on Windows.
 ## Run
 
 ```bash
+python scripts/init-local-env.py
+docker compose up -d --build
+```
+
+On Windows PowerShell:
+
+```powershell
+.\scripts\init-local-env.ps1
 docker compose up -d --build
 ```
 
@@ -127,8 +137,8 @@ validates it with `nginx -t`, and reloads NGINX automatically.
 Run Funnel on the host machine:
 
 ```bash
-tailscale funnel --bg --https=443 http://127.0.0.1:80
+tailscale funnel --bg --https=443 http://127.0.0.1:81
 ```
 
 Tailscale remains outside Docker; the container only serves HTTP on local port
-`80`.
+`81` by default.
